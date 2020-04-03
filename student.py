@@ -1,4 +1,5 @@
 import numpy as np
+from skimage.filters import scharr_h, scharr_v, gaussian
 
 
 def get_interest_points(image, feature_width):
@@ -51,7 +52,7 @@ def get_interest_points(image, feature_width):
     return xs, ys
 
 
-def get_features(image, x, y, feature_width):
+def get_features(image, xs, ys, feature_width):
     """
     Returns feature descriptors for a given set of interest points.
 
@@ -112,12 +113,67 @@ def get_features(image, x, y, feature_width):
             dimensionality is 128)
 
     """
+    # Convert to integers for indexing 
+    xs = np.round(xs).astype(int)
+    ys = np.round(ys).astype(int)
 
-    # TODO: Your implementation here! See block comments and the project webpage for instructions
+    # Define helper functions for readabilty and avoid copy-pasting
+    def get_window(x, y):
+        """
+         Helper to get indices of the feature_width square
+        """
+        rows = (x - (feature_width/2 -1), x + feature_width/2)
+        if rows[0] < 0:
+            rows = (0, rows[1] - rows[0])
+        if rows[1] >= image.shape[0]:
+            rows = (rows[0]  + (image.shape[0] -1 - rows[1]), image.shape[0] - 1)
+        cols = (y - (feature_width/2 -1), y + feature_width/2)
+        if cols[0] < 0:
+            cols = (0, cols[1] - cols[0])
+        if cols[1] >= image.shape[1]:
+            cols = (cols[0]  - (cols[1] + 1 - image.shape[1]), image.shape[1] - 1)
+        return int(rows[0]), int(rows[1]) + 1, int(cols[0]), int(cols[1]) + 1
 
-    # This is a placeholder - replace this with your features!
-    features = np.zeros((1, 128))
-
+    def get_current_window(i, j, matrix):
+        """
+        Helper to get sub square of size feature_width/4 
+        From the square matrix of size feature_width
+        """
+        return matrix[int(i*feature_width/4):
+                    int((i+1)*feature_width/4),
+                    int(j*feature_width/4):
+                    int((j+1)*feature_width/4)]
+    
+    # Initialize features tensor, with an easily indexable shape
+    features = np.zeros((len(xs), 4, 4, 8))
+    # Get gradients and angles by filters (approximation)
+    filtered_image = gaussian(image)
+    dx = scharr_h(filtered_image)
+    dy = scharr_v(filtered_image)
+    
+    gradient = np.sqrt(np.square(dx) + np.square(dy))
+    angles = np.arctan2(dy, dx)
+    angles[angles < 0 ] += 2*np.pi
+    # Quantize angles
+    angles = np.round(angles / (2*np.pi/8))
+    angles[angles == 8 ] = 0
+    for n, (x, y) in enumerate(zip(xs, ys)):
+        # Feature square 
+        i1, i2, j1, j2 = get_window(x, y)
+        grad_window = gradient[i1:i2, j1:j2]
+        angle_window = angles[i1:i2, j1:j2]
+        # Loop over sub feature squares 
+        for i in range(4):
+            for j in range(4):
+                # Enhancement: a Gaussian fall-off function window
+                current_grad = get_current_window(i, j, grad_window)
+                current_angle = get_current_window(i, j, angle_window)
+                for bin_ in range(8):
+                    features[n, i, j, bin_] = np.sum(current_grad[
+                        np.where(current_angle == bin_ )])
+                
+    features = features.reshape((len(xs), -1,))
+    features = features / features.sum(axis = 1).reshape(-1, 1)
     return features
 
 
