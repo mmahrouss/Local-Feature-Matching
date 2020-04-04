@@ -1,8 +1,6 @@
 import numpy as np
 from skimage.filters import scharr_h, scharr_v, gaussian
 
-import math
-
 def get_interest_points(image, feature_width):
     """
     Returns interest points for the input image
@@ -175,6 +173,7 @@ def get_features(image, xs, ys, feature_width):
                 
     features = features.reshape((len(xs), -1,))
     features = features / features.sum(axis = 1).reshape(-1, 1)
+    features[np.isnan(features)] = 0
     return features
 
 
@@ -210,14 +209,14 @@ def match_features(im1_features, im2_features):
     """
 
     # Initialize variables
-    matches = np.zeros((im1_features.shape[0], 2))
-    confidences = np.zeros((im1_features.shape[0], 1))
+    matches = []
+    confidences = []
     
     
     # Loop over the number of features in the first image
     for i in range(im1_features.shape[0]):
         # Loop over the number of features in the second image
-        distances = np.zeros((im2_features.shape[0], 1))
+        distances = np.zeros((im2_features.shape[0],))
         for j in range(im2_features.shape[0]):
             # 1st, extract the feature vector of the ith row in the first image, and the jth row in the second image
             # 2nd, subtract both features
@@ -226,7 +225,7 @@ def match_features(im1_features, im2_features):
             # lastly, get the sqrt. That is the distance.
             #Calculate the Euclidean distance between the feature vectors and sum.
             # Save it in a tuple containing (distance, index of distance)
-            distances[j] = math.sqrt(((im2_features[i,:]-im2_features[j,:])**2).sum())
+            distances[j] = np.sqrt(((im2_features[i,:]-im2_features[j,:])**2).sum())
 
         # sort the distances in ascending order, while retaining the index of that distance
         #sorted_dist_index = sorted(distances, key=lambda tup: tup[0])
@@ -235,10 +234,11 @@ def match_features(im1_features, im2_features):
         
         # If the ratio between the 2 smallest distances is less than 0.8
         # add the smallest distance to the best matches
-        if (distances[ind_sorted[0]]<0.8*distances[ind_sorted[1]]):
-          # append the index of im1_feature, and its corresponding best matching im2_feature's index
-          matches.append([i, ind_sorted[0]])
+        if (distances[ind_sorted[0]] < 0.8 * distances[ind_sorted[1]]):
+        # append the index of im1_feature, and its corresponding best matching im2_feature's index
+            matches.append([i, ind_sorted[0]])
+            confidences.append(1.0  - distances[ind_sorted[0]]/distances[ind_sorted[1]])
           # How can I measure confidence?
           
 
-    return matches, confidences
+    return np.asarray(matches), np.asarray(confidences)
