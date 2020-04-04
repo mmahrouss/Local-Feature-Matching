@@ -219,19 +219,11 @@ def match_features(im1_features, im2_features):
     for i in range(im1_features.shape[0]):
         # Loop over the number of features in the second image
         distances = np.zeros((im2_features.shape[0],))
-        for j in range(im2_features.shape[0]):
-            # 1st, extract the feature vector of the ith row in the first image, and the jth row in the second image
-            # 2nd, subtract both features
-            # 3rd, square them
-            # 4th, sum the squared differences
-            # lastly, get the sqrt. That is the distance.
-            #Calculate the Euclidean distance between the feature vectors and sum.
-            # Save it in a tuple containing (distance, index of distance)
-            distances[j] = np.sqrt(((im2_features[i,:]-im2_features[j,:])**2).sum())
+        # Calculate the euclidean distance between feature vector i in 1st image and all other feature vectors
+        # second image
+        distances = np.sqrt(((im1_features[i,:]-im2_features)**2).sum(axis = 1))
 
         # sort the distances in ascending order, while retaining the index of that distance
-        #sorted_dist_index = sorted(distances, key=lambda tup: tup[0])
-        # Sort the distances and save their indices sorted.
         ind_sorted = np.argsort(distances)
         
         # If the ratio between the 2 smallest distances is less than 0.8
