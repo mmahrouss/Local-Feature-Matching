@@ -173,6 +173,8 @@ def get_features(image, xs, ys, feature_width):
                 
     features = features.reshape((len(xs), -1,))
     features = features / features.sum(axis = 1).reshape(-1, 1)
+    # Rare cases where the gradients are all zeros in the window
+    # Results in np.nan from division by zero.
     features[np.isnan(features)] = 0
     return features
 
