@@ -1,5 +1,6 @@
 import numpy as np
 from skimage.filters import scharr_h, scharr_v, gaussian
+import cv2
 
 def get_interest_points(image, feature_width):
     """
@@ -43,12 +44,40 @@ def get_interest_points(image, feature_width):
     """
 
     # TODO: Your implementation here! See block comments and the project webpage for instructions
+    
+    a = 0.06
+    threshold = 1000 
+    offset = int(feature_width/2)
+    rows = image.shape[0]
+    cols = image.shape[1]
+    xs = []
+    ys = []
+    
+    #get the gradients in the x and y directions using sobel filter
+    img_gaussian = cv2.GaussianBlur(image, (5, 5), 0)
+    I_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
+    I_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
+    
+    Ixx = I_x**2
+    Ixy = I_y*I_x
+    Iyy = I_y**2
+    
+    # find the sum squared difference (SSD)
+    for y in range(rows-offset):
+        for x in range(cols-offset):
+            Sxx = np.sum(Ixx[y+offset:y+offset*2+1, x+offset:x+offset*2+1])
+            Syy = np.sum(Iyy[y+offset:y+offset*2+1, x+offset:x+offset*2+1])
+            Sxy = np.sum(Ixy[y+offset:y+offset*2+1, x+offset:x+offset*2+1])
+            #Find determinant and trace, use to get corner response
+            detH = (Sxx * Syy) - (Sxy**2)
+            traceH = Sxx + Syy
+            R = detH - a*(traceH**2)
+            #If corner response is over threshold, it is a corner
+            if R > threshold:
+                xs.append(x)
+                ys.append(y)
 
-    # These are placeholders - replace with the coordinates of your interest points!
-    xs = np.zeros(1)
-    ys = np.zeros(1)
-
-    return xs, ys
+    return np.asarray(xs), np.asarray(ys)
 
 
 def get_features(image, xs, ys, feature_width):
@@ -225,10 +254,9 @@ def match_features(im1_features, im2_features):
 
         # sort the distances in ascending order, while retaining the index of that distance
         ind_sorted = np.argsort(distances)
-        
         # If the ratio between the 2 smallest distances is less than 0.8
         # add the smallest distance to the best matches
-        if (distances[ind_sorted[0]] < 0.8 * distances[ind_sorted[1]]):
+        if (distances[ind_sorted[0]] < 0.9 * distances[ind_sorted[1]]):
         # append the index of im1_feature, and its corresponding best matching im2_feature's index
             matches.append([i, ind_sorted[0]])
             confidences.append(1.0  - distances[ind_sorted[0]]/distances[ind_sorted[1]])
