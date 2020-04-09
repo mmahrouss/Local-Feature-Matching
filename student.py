@@ -1,5 +1,10 @@
 import numpy as np
-from skimage.filters import scharr_h, scharr_v, gaussian
+from skimage.filters import scharr_h, scharr_v, sobel_h, sobel_v, gaussian
+# debug:
+import matplotlib
+import matplotlib.pyplot as plt
+matplotlib.use("TkAgg")
+
 
 def get_interest_points(image, feature_width):
     """
@@ -142,25 +147,43 @@ def get_features(image, xs, ys, feature_width):
                     int((i+1)*feature_width/4),
                     int(j*feature_width/4):
                     int((j+1)*feature_width/4)]
+
+    def rotate_by_dominant_angle(angles):
+        hist, bin_edges = np.histogram(angles, bins= np.arange(0, 36+1) * 2 * np.pi / 36)
+        angles -= bin_edges[np.argmax(hist)]
+        angles[ angles < 0 ] += 2 * np.pi
     
     # Initialize features tensor, with an easily indexable shape
     features = np.zeros((len(xs), 4, 4, 8))
     # Get gradients and angles by filters (approximation)
     filtered_image = gaussian(image)
-    dx = scharr_h(filtered_image)
-    dy = scharr_v(filtered_image)
-    
+    dx = scharr_v(filtered_image)
+    dy = scharr_h(filtered_image)
+    ##
+    # plt.imshow(dx, cmap='gray', vmin=0, vmax=1.0)
+    # plt.show()
+    # plt.imshow(dy, cmap='gray', vmin=0, vmax=1.0)
+    # plt.show()
+    ##
     gradient = np.sqrt(np.square(dx) + np.square(dy))
+    ##
+    # plt.imshow(gradient, cmap='gray', vmin=0, vmax=1.0)
+    # plt.gca().scatter(xs, ys, facecolors='none', edgecolors='orangered')
+    # plt.show()
+    ##
     angles = np.arctan2(dy, dx)
     angles[angles < 0 ] += 2*np.pi
-    # Quantize angles
-    angles = np.round(angles / (2*np.pi/8))
-    angles[angles == 8 ] = 0
+
     for n, (x, y) in enumerate(zip(xs, ys)):
         # Feature square 
         i1, i2, j1, j2 = get_window(x, y)
         grad_window = gradient[i1:i2, j1:j2]
+        # features[n] = image[i1:i2, j1:j2]
         angle_window = angles[i1:i2, j1:j2]
+        # rotate_by_dominant_angle(angle_window)
+        # Quantize angles
+        angle_window = np.round(angle_window / (2*np.pi/8))
+        angle_window[angle_window == 8 ] = 0
         # Loop over sub feature squares 
         for i in range(4):
             for j in range(4):
@@ -172,10 +195,12 @@ def get_features(image, xs, ys, feature_width):
                         np.where(current_angle == bin_ )])
                 
     features = features.reshape((len(xs), -1,))
-    features = features / features.sum(axis = 1).reshape(-1, 1)
+    features = features / np.linalg.norm(features, axis=1).reshape(-1, 1) #features.sum(axis = 1).reshape(-1, 1)
     # Rare cases where the gradients are all zeros in the window
     # Results in np.nan from division by zero.
     features[np.isnan(features)] = 0
+    # features  = features ** 0.4
+    # features = features / features.sum(axis = 1).reshape(-1, 1)
     return features
 
 
