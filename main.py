@@ -131,8 +131,8 @@ def main():
 
     print("Getting interest points...")
 
-    # (x1, y1) = student.get_interest_points(image1, feature_width)
-    # (x2, y2) = student.get_interest_points(image2, feature_width)
+    (x1, y1) = student.get_interest_points(image1, feature_width)
+    (x2, y2) = student.get_interest_points(image2, feature_width)
 
     # For development and debugging get_features and match_features, you will likely
     # want to use the ta ground truth points, you can comment out the preceding two
@@ -140,17 +140,17 @@ def main():
     # points for mt. rushmore will not produce good results, so you'll have to use
     # your own function for that image pair.
 
-    (x1, y1, x2, y2) = cheat_interest_points(eval_file, scale_factor)
+#     (x1, y1, x2, y2) = cheat_interest_points(eval_file, scale_factor)
 
     # if you want to view your corners uncomment these next lines!
 
-    # plt.imshow(image1, cmap="gray")
-    # plt.scatter(x1, y1, alpha=0.9, s=3)
-    # plt.show()
+    plt.imshow(image1, cmap="gray")
+    plt.scatter(x1, y1, alpha=0.9, s=3)
+    plt.show()
 
-    # plt.imshow(image2, cmap="gray")
-    # plt.scatter(x2, y2, alpha=0.9, s=3)
-    # plt.show()
+    plt.imshow(image2, cmap="gray")
+    plt.scatter(x2, y2, alpha=0.9, s=3)
+    plt.show()
 
     print("Done!")
 
