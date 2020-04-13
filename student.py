@@ -224,11 +224,12 @@ def get_features(image, xs, ys, feature_width):
                         np.where(current_angle == bin_ )])
                 
     features = features.reshape((len(xs), -1,))
-    features = features / np.linalg.norm(features, axis=1).reshape(-1, 1) #features.sum(axis = 1).reshape(-1, 1)
+    dividend = np.linalg.norm(features, axis=1).reshape(-1, 1)
     # Rare cases where the gradients are all zeros in the window
     # Results in np.nan from division by zero.
-    features[np.isnan(features)] = 0
-    # features  = features ** 0.4
+    dividend[dividend == 0 ] = 1
+    features = features / dividend
+    # features  = features ** 0.75
     # features = features / features.sum(axis = 1).reshape(-1, 1)
     return features
 
@@ -271,8 +272,6 @@ def match_features(im1_features, im2_features):
     
     # Loop over the number of features in the first image
     for i in range(im1_features.shape[0]):
-        # Loop over the number of features in the second image
-        distances = np.zeros((im2_features.shape[0],))
         # Calculate the euclidean distance between feature vector i in 1st image and all other feature vectors
         # second image
         distances = np.sqrt(((im1_features[i,:]-im2_features)**2).sum(axis = 1))
