@@ -51,20 +51,22 @@ def get_interest_points(image, feature_width):
     # TODO: Your implementation here! See block comments and the project webpage for instructions
     
     a = 0.06
-    threshold = 100
+    threshold = 0.001
     stride = 2
-    sigma = 2
+    sigma = 0.5
     rows = image.shape[0]
     cols = image.shape[1]
     xs = []
     ys = []
     print("R threshold: ", threshold, " Stride: ", stride, "Gaussian sigma: ", sigma, " Alpha: ", a)
     #get the gradients in the x and y directions using sobel filter
-    image = gaussian(image)
-    I_x = np.abs(cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3))
-    I_y = np.abs(cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3))
+#     image = gaussian(image,2)
+    I_x = cv2.Sobel(image, cv2.CV_8U, 1, 0, ksize=5)
+    I_y = cv2.Sobel(image, cv2.CV_8U, 0, 1, ksize=5)
     I_x = gaussian(I_x, sigma)
-    I_x = gaussian(I_x, sigma)
+    I_y = gaussian(I_y, sigma)
+    I_x[I_x < 0.25*np.max(I_x)] = 0
+    I_y[I_y < 0.25*np.max(I_y)] = 0
 
     Ixx = I_x**2
     Ixy = I_y*I_x
@@ -283,7 +285,7 @@ def match_features(im1_features, im2_features):
         ind_sorted = np.argsort(distances)
         # If the ratio between the 2 smallest distances is less than 0.8
         # add the smallest distance to the best matches
-        if (distances[ind_sorted[0]] < 0.9 * distances[ind_sorted[1]]):
+        if (distances[ind_sorted[0]] < 0.75 * distances[ind_sorted[1]]):
         # append the index of im1_feature, and its corresponding best matching im2_feature's index
             matches.append([i, ind_sorted[0]])
             confidences.append(1.0  - distances[ind_sorted[0]]/distances[ind_sorted[1]])
