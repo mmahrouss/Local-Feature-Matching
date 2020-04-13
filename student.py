@@ -51,28 +51,31 @@ def get_interest_points(image, feature_width):
     # TODO: Your implementation here! See block comments and the project webpage for instructions
     
     a = 0.06
-    threshold = 1000 
-    offset = int(feature_width/2)
+    threshold = 100
+    stride = 2
+    sigma = 2
     rows = image.shape[0]
     cols = image.shape[1]
     xs = []
     ys = []
-    
+    print("R threshold: ", threshold, " Stride: ", stride, "Gaussian sigma: ", sigma, " Alpha: ", a)
     #get the gradients in the x and y directions using sobel filter
-    img_gaussian = cv2.GaussianBlur(image, (5, 5), 0)
-    I_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
-    I_y = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3)
-    
+    image = gaussian(image)
+    I_x = np.abs(cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3))
+    I_y = np.abs(cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3))
+    I_x = gaussian(I_x, sigma)
+    I_x = gaussian(I_x, sigma)
+
     Ixx = I_x**2
     Ixy = I_y*I_x
     Iyy = I_y**2
-    
+
     # find the sum squared difference (SSD)
-    for y in range(rows-offset):
-        for x in range(cols-offset):
-            Sxx = np.sum(Ixx[y+offset:y+offset*2+1, x+offset:x+offset*2+1])
-            Syy = np.sum(Iyy[y+offset:y+offset*2+1, x+offset:x+offset*2+1])
-            Sxy = np.sum(Ixy[y+offset:y+offset*2+1, x+offset:x+offset*2+1])
+    for y in range(0,rows-feature_width,stride):
+        for x in range(0,cols-feature_width,stride):
+            Sxx = np.sum(Ixx[y:y+feature_width+1, x:x+feature_width+1])
+            Syy = np.sum(Iyy[y:y+feature_width+1, x:x+feature_width+1])
+            Sxy = np.sum(Ixy[y:y+feature_width+1, x:x+feature_width+1])
             #Find determinant and trace, use to get corner response
             detH = (Sxx * Syy) - (Sxy**2)
             traceH = Sxx + Syy
@@ -81,7 +84,6 @@ def get_interest_points(image, feature_width):
             if R > threshold:
                 xs.append(x)
                 ys.append(y)
-
     return np.asarray(xs), np.asarray(ys)
 
 
