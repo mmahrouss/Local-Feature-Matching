@@ -48,25 +48,27 @@ def get_interest_points(image, feature_width):
 
     """
 
-    # TODO: Your implementation here! See block comments and the project webpage for instructions
     
     a = 0.06
-    threshold = 0.001
+    threshold = 0.005
     stride = 2
-    sigma = 0.5
+    sigma = 0.2
     rows = image.shape[0]
     cols = image.shape[1]
     xs = []
     ys = []
     print("R threshold: ", threshold, " Stride: ", stride, "Gaussian sigma: ", sigma, " Alpha: ", a)
     #get the gradients in the x and y directions using sobel filter
-#     image = gaussian(image,2)
-    I_x = cv2.Sobel(image, cv2.CV_8U, 1, 0, ksize=5)
-    I_y = cv2.Sobel(image, cv2.CV_8U, 0, 1, ksize=5)
+    # image = gaussian(image)
+    USE_SOBEL = True 
+    if USE_SOBEL:
+        I_x = cv2.Sobel(image, cv2.CV_8U, 1, 0, ksize=5)
+        I_y = cv2.Sobel(image, cv2.CV_8U, 0, 1, ksize=5)
+    else:
+        I_x = np.abs(cv2.Scharr(image, cv2.CV_32F, 1, 0))
+        I_y = np.abs(cv2.Scharr(image, cv2.CV_32F, 0, 1))
     I_x = gaussian(I_x, sigma)
     I_y = gaussian(I_y, sigma)
-    I_x[I_x < 0.25*np.max(I_x)] = 0
-    I_y[I_y < 0.25*np.max(I_y)] = 0
 
     Ixx = I_x**2
     Ixy = I_y*I_x
@@ -84,8 +86,8 @@ def get_interest_points(image, feature_width):
             R = detH - a*(traceH**2)
             #If corner response is over threshold, it is a corner
             if R > threshold:
-                xs.append(x)
-                ys.append(y)
+                xs.append(x + int(feature_width/2 -1))
+                ys.append(y + int(feature_width/2 -1))
     return np.asarray(xs), np.asarray(ys)
 
 
@@ -155,7 +157,7 @@ def get_features(image, xs, ys, feature_width):
     ys = np.round(ys).astype(int)
 
     # Define helper functions for readabilty and avoid copy-pasting
-    def get_window(x, y):
+    def get_window(y, x):
         """
          Helper to get indices of the feature_width square
         """
@@ -181,29 +183,19 @@ def get_features(image, xs, ys, feature_width):
                     int(j*feature_width/4):
                     int((j+1)*feature_width/4)]
 
-    def rotate_by_dominant_angle(angles):
-        hist, bin_edges = np.histogram(angles, bins= np.arange(0, 36+1) * 2 * np.pi / 36)
+    def rotate_by_dominant_angle(angles, grads):
+        hist, bin_edges = np.histogram(angles, bins= 36, range=(0, 2*np.pi), weights=grads)
         angles -= bin_edges[np.argmax(hist)]
         angles[ angles < 0 ] += 2 * np.pi
     
     # Initialize features tensor, with an easily indexable shape
     features = np.zeros((len(xs), 4, 4, 8))
     # Get gradients and angles by filters (approximation)
-    filtered_image = gaussian(image)
+    sigma = 3
+    filtered_image = gaussian(image, sigma)
     dx = scharr_v(filtered_image)
     dy = scharr_h(filtered_image)
-    ##
-    # plt.imshow(dx, cmap='gray', vmin=0, vmax=1.0)
-    # plt.show()
-    # plt.imshow(dy, cmap='gray', vmin=0, vmax=1.0)
-    # plt.show()
-    ##
     gradient = np.sqrt(np.square(dx) + np.square(dy))
-    ##
-    # plt.imshow(gradient, cmap='gray', vmin=0, vmax=1.0)
-    # plt.gca().scatter(xs, ys, facecolors='none', edgecolors='orangered')
-    # plt.show()
-    ##
     angles = np.arctan2(dy, dx)
     angles[angles < 0 ] += 2*np.pi
 
@@ -211,28 +203,26 @@ def get_features(image, xs, ys, feature_width):
         # Feature square 
         i1, i2, j1, j2 = get_window(x, y)
         grad_window = gradient[i1:i2, j1:j2]
-        # features[n] = image[i1:i2, j1:j2]
         angle_window = angles[i1:i2, j1:j2]
-        # rotate_by_dominant_angle(angle_window)
-        # Quantize angles
-        angle_window = np.round(angle_window / (2*np.pi/8))
-        angle_window[angle_window == 8 ] = 0
+        # rotate_by_dominant_angle(angle_window, grad_window)
         # Loop over sub feature squares 
         for i in range(4):
             for j in range(4):
                 # Enhancement: a Gaussian fall-off function window
-                current_grad = get_current_window(i, j, grad_window)
-                current_angle = get_current_window(i, j, angle_window)
-                for bin_ in range(8):
-                    features[n, i, j, bin_] = np.sum(current_grad[
-                        np.where(current_angle == bin_ )])
+                current_grad = get_current_window(i, j, grad_window).flatten()
+                current_angle = get_current_window(i, j, angle_window).flatten()
+                features[n, i, j] = np.histogram(current_angle, bins=8,
+                 range=(0, 2*np.pi), weights=current_grad)[0]
                 
     features = features.reshape((len(xs), -1,))
-    features = features / np.linalg.norm(features, axis=1).reshape(-1, 1) #features.sum(axis = 1).reshape(-1, 1)
+    dividend = np.linalg.norm(features, axis=1).reshape(-1, 1)
     # Rare cases where the gradients are all zeros in the window
     # Results in np.nan from division by zero.
-    features[np.isnan(features)] = 0
-    # features  = features ** 0.4
+    dividend[dividend == 0 ] = 1
+    features = features / dividend
+    thresh = 0.4
+    features[ features >= thresh ] = thresh
+    features  = features ** 0.7
     # features = features / features.sum(axis = 1).reshape(-1, 1)
     return features
 
@@ -272,11 +262,8 @@ def match_features(im1_features, im2_features):
     matches = []
     confidences = []
     
-    
     # Loop over the number of features in the first image
     for i in range(im1_features.shape[0]):
-        # Loop over the number of features in the second image
-        distances = np.zeros((im2_features.shape[0],))
         # Calculate the euclidean distance between feature vector i in 1st image and all other feature vectors
         # second image
         distances = np.sqrt(((im1_features[i,:]-im2_features)**2).sum(axis = 1))
@@ -290,6 +277,7 @@ def match_features(im1_features, im2_features):
             matches.append([i, ind_sorted[0]])
             confidences.append(1.0  - distances[ind_sorted[0]]/distances[ind_sorted[1]])
           # How can I measure confidence?
-          
+    confidences = np.asarray(confidences)
+    confidences[np.isnan(confidences)] = np.min(confidences[~np.isnan(confidences)])     
 
-    return np.asarray(matches), np.asarray(confidences)
+    return np.asarray(matches), confidences
