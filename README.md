@@ -10,14 +10,20 @@ The project consists of three parts in `student.py`:
 3. Matching Features between two images `match_features`
 
 ## Results:
+
+### Notre Dame
 ![](images/notre_dame_matches.jpg
-)
-Matches after Whole pipeline on Notre Dame. Matches: 1113 Accuracy on 50most confident: 100% Accuracy on 100 most confident: 99% Accuracy on all matches:75%
+)<br /> 
+*Matches after Whole pipeline on Notre Dame. Matches: 1113 Accuracy on 50most confident: 100% Accuracy on 100 most confident: 99% Accuracy on all matches:75%*
+
+### Mt Rushmore
 ![](images/mt_rushmore_matches.jpg
-)
-Matches after Whole pipeline on Mount Rushmore . Matches: 55 Accuracy on50 most confident: 94% Accuracy on all matches: 92%
+)<br /> 
+*Matches after Whole pipeline on Mount Rushmore . Matches: 55 Accuracy on50 most confident: 94% Accuracy on all matches: 92%*
+
+### E Gaudi
 ![](images/e_gaudi_matches.jpg
-)
-Matches after Whole pipeline on Epicopal Gaudi . Matches: 13 Accuracy onall matches: 23%
+)<br /> 
+*Matches after Whole pipeline on Epicopal Gaudi . Matches: 13 Accuracy onall matches: 23%*
 
 
