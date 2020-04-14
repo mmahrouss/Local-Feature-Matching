@@ -191,7 +191,7 @@ def get_features(image, xs, ys, feature_width):
     # Initialize features tensor, with an easily indexable shape
     features = np.zeros((len(xs), 4, 4, 8))
     # Get gradients and angles by filters (approximation)
-    sigma = 3
+    sigma = 0.8
     filtered_image = gaussian(image, sigma)
     dx = scharr_v(filtered_image)
     dy = scharr_h(filtered_image)
@@ -204,10 +204,9 @@ def get_features(image, xs, ys, feature_width):
         i1, i2, j1, j2 = get_window(x, y)
         grad_window = gradient[i1:i2, j1:j2]
         angle_window = angles[i1:i2, j1:j2]
-        # rotate_by_dominant_angle(angle_window, grad_window)
         # Loop over sub feature squares 
-        for i in range(4):
-            for j in range(4):
+        for i in range(int(feature_width/4)):
+            for j in range(int(feature_width/4)):
                 # Enhancement: a Gaussian fall-off function window
                 current_grad = get_current_window(i, j, grad_window).flatten()
                 current_angle = get_current_window(i, j, angle_window).flatten()
@@ -220,9 +219,9 @@ def get_features(image, xs, ys, feature_width):
     # Results in np.nan from division by zero.
     dividend[dividend == 0 ] = 1
     features = features / dividend
-    thresh = 0.4
+    thresh = 0.25
     features[ features >= thresh ] = thresh
-    features  = features ** 0.7
+    features  = features ** 0.8
     # features = features / features.sum(axis = 1).reshape(-1, 1)
     return features
 
