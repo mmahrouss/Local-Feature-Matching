@@ -271,7 +271,7 @@ def match_features(im1_features, im2_features):
         ind_sorted = np.argsort(distances)
         # If the ratio between the 2 smallest distances is less than 0.8
         # add the smallest distance to the best matches
-        if (distances[ind_sorted[0]] < 0.75 * distances[ind_sorted[1]]):
+        if (distances[ind_sorted[0]] < 0.9 * distances[ind_sorted[1]]):
         # append the index of im1_feature, and its corresponding best matching im2_feature's index
             matches.append([i, ind_sorted[0]])
             confidences.append(1.0  - distances[ind_sorted[0]]/distances[ind_sorted[1]])
